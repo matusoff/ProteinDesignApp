@@ -1,0 +1,6 @@
+# Optional: ESMFold structure prediction + inline viewer (large downloads, GPU recommended)
+# pip install -r requirements-structure.txt
+torch>=2.1.0
+transformers>=4.40.0,<5
+accelerate>=0.30.0
+py3Dmol>=2.0.0
