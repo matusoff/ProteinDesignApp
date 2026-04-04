@@ -1,66 +1,144 @@
-from utils.constants import PATCH_BREAKING_MAP
+from __future__ import annotations
+
 from config import TOP_N_SUGGESTIONS
+from core.decision_engine import build_decision_summary
+from core.mutation_impact import evaluate_mutation_for_region
+from core.region_analysis import analyze_regions
+
+# Conservative vs aggressive patch-breaking candidates (per WT residue)
+PATCH_OPTIONS: dict[str, list[str]] = {
+    "F": ["Y", "S"],
+    "W": ["Y", "F"],
+    "Y": ["F", "S"],
+    "L": ["V", "Q", "E"],
+    "I": ["V", "Q", "E"],
+    "V": ["T", "Q", "E"],
+    "M": ["L", "Q"],
+    "A": ["S", "T"],
+}
 
 
-def _make_mutation_record(
-    position: int,
-    wt: str,
-    mut: str,
-    category: str,
-    expected_effect: str,
-    rationale: str,
-    confidence: str,
-) -> dict:
+def _synthetic_window_region(seq: str, position: int, half: int = 4) -> dict:
+    start = max(1, position - half)
+    end = min(len(seq), position + half)
     return {
-        "rank": 0,
-        "position": position,
-        "wt_residue": wt,
-        "mut_residue": mut,
-        "mutation": f"{wt}{position}{mut}",
-        "category": category,
-        "expected_effect": expected_effect,
-        "rationale": rationale,
-        "confidence": confidence,
-        "protected_filtered": True,
+        "start": start,
+        "end": end,
+        "sequence": seq[start - 1 : end],
+        "dominant_issue": "site_specific_mitigation",
+        "severity": "medium",
+        "confidence": "low",
+        "reason_summary": "Site-targeted substitution (liability or local mitigation).",
+        "design_strategy": "Evaluate structural context; prefer conservative changes if structure-sensitive.",
+        "source_flags": [{}],
     }
 
 
-def suggest_patch_breaking_mutations(
+def generate_region_candidate_mutations(
     seq: str,
-    risk_regions: list[dict],
+    region_analysis: dict,
     protected_positions: set[int],
-) -> list[dict]:
-    suggestions = []
-    for region in risk_regions:
-        if region["risk_type"] != "hydrophobic_cluster":
+) -> list[tuple[int, str]]:
+    candidates: list[tuple[int, str]] = []
+    start, end = region_analysis["start"], region_analysis["end"]
+
+    for pos in range(start, end + 1):
+        if pos in protected_positions:
             continue
 
-        start, end = region["start"], region["end"]
-        for pos in range(start, end + 1):
-            if pos in protected_positions:
+        wt = seq[pos - 1]
+        if wt not in PATCH_OPTIONS:
+            continue
+
+        for alt in PATCH_OPTIONS[wt]:
+            if alt == wt:
                 continue
-            wt = seq[pos - 1]
-            if wt in PATCH_BREAKING_MAP:
-                mut = PATCH_BREAKING_MAP[wt][0]
-                suggestions.append(_make_mutation_record(
-                    position=pos,
-                    wt=wt,
-                    mut=mut,
-                    category="patch_breaking",
-                    expected_effect="Reduce local hydrophobicity",
-                    rationale="Residue lies within a hydrophobic risk region",
-                    confidence="medium",
-                ))
-                break
-    return suggestions
+            candidates.append((pos, alt))
+
+    return candidates
 
 
-def suggest_oxidation_mitigations(
+def generate_ranked_region_suggestions(
     seq: str,
-    liabilities: list[dict],
+    region_analysis: dict,
     protected_positions: set[int],
 ) -> list[dict]:
-    suggestions = []
+    candidates = generate_region_candidate_mutations(seq, region_analysis, protected_positions)
+    impacts: list[dict] = []
+
+    for pos, alt in candidates:
+        impacts.append(evaluate_mutation_for_region(seq, region_analysis, pos, alt))
+
+    impacts = sorted(
+        impacts,
+        key=lambda x: (-x["benefit_score"], x["disruption_risk"], x["position"]),
+    )
+    return impacts
+
+
+def select_safer_and_stronger_options(impacts: list[dict]) -> list[dict]:
+    if not impacts:
+        return []
+
+    safer = sorted(impacts, key=lambda x: (x["disruption_risk"], -x["benefit_score"]))[:1]
+    stronger = sorted(impacts, key=lambda x: (-x["benefit_score"], x["disruption_risk"]))[:1]
+
+    chosen: list[dict] = []
+    seen: set[str] = set()
+    for item, tag in [(safer[0], "safer"), (stronger[0], "stronger")]:
+        key = item["mutation"]
+        if key not in seen:
+            new_item = dict(item)
+            new_item["option_type"] = tag
+            chosen.append(new_item)
+            seen.add(key)
+
+    return chosen
+
+
+def _evaluate_liability_mutation(
+    seq: str,
+    position: int,
+    new_residue: str,
+    category: str,
+) -> dict:
+    ra = _synthetic_window_region(seq, position)
+    impact = evaluate_mutation_for_region(seq, ra, position, new_residue)
+    impact["category"] = category
+    impact["option_type"] = "mitigation"
+    impact["rationale"] = (
+        f"{impact['mutation']} ({category}): " + impact["rationale"]
+    )
+    return impact
+
+
+def generate_mutation_suggestions(
+    seq: str,
+    risk_regions: list[dict],
+    liabilities: list[dict],
+    protected_positions: set[int],
+) -> tuple[list[dict], list[dict], list[dict], dict]:
+    """
+    Returns (mutation_impacts_for_display, mutation_suggestions_flat, region_analyses, decision_summary).
+
+    mutation_suggestions_flat: ranked list for export/table (includes option_type when present).
+    """
+    region_analyses = analyze_regions(risk_regions, liabilities)
+
+    all_impacts: list[dict] = []
+    for ra in region_analyses:
+        if (ra.get("source_flags") or [{}])[0].get("risk_type") != "hydrophobic_cluster":
+            continue
+        impacts = generate_ranked_region_suggestions(seq, ra, protected_positions)
+        chosen = select_safer_and_stronger_options(impacts)
+        for c in chosen:
+            c.setdefault("category", "patch_breaking")
+            c["expected_effect"] = (
+                "Reduce local hydrophobicity / disrupt aggregation-prone patch"
+            )
+        all_impacts.extend(chosen)
+
+    # Oxidation M->L
     for item in liabilities:
         if item["liability_type"] != "oxidation_prone_residue":
             continue
@@ -69,24 +147,11 @@ def suggest_oxidation_mitigations(
             continue
         wt = seq[pos - 1]
         if wt == "M":
-            suggestions.append(_make_mutation_record(
-                position=pos,
-                wt="M",
-                mut="L",
-                category="oxidation_mitigation",
-                expected_effect="Reduce oxidation sensitivity",
-                rationale="Methionine flagged as oxidation-prone",
-                confidence="low",
-            ))
-    return suggestions
+            all_impacts.append(
+                _evaluate_liability_mutation(seq, pos, "L", "oxidation_mitigation")
+            )
 
-
-def suggest_motif_breaking_mutations(
-    seq: str,
-    liabilities: list[dict],
-    protected_positions: set[int],
-) -> list[dict]:
-    suggestions = []
+    # N-gly motif N->Q
     for item in liabilities:
         if item["liability_type"] != "N_glycosylation_motif":
             continue
@@ -94,54 +159,31 @@ def suggest_motif_breaking_mutations(
         if pos in protected_positions:
             continue
         wt = seq[pos - 1]
-        suggestions.append(_make_mutation_record(
-            position=pos,
-            wt=wt,
-            mut="Q",
-            category="motif_breaking",
-            expected_effect="Break N-linked glycosylation motif",
-            rationale="N-X-S/T motif detected",
-            confidence="low",
-        ))
-    return suggestions
+        if wt == "N":
+            all_impacts.append(
+                _evaluate_liability_mutation(seq, pos, "Q", "motif_breaking")
+            )
 
+    # Rank all impacts by benefit, then cap
+    def _dedupe_impacts(impacts: list[dict]) -> list[dict]:
+        by_mut: dict[str, dict] = {}
+        for x in impacts:
+            m = str(x["mutation"])
+            if m not in by_mut or x["benefit_score"] > by_mut[m]["benefit_score"]:
+                by_mut[m] = x
+        return list(by_mut.values())
 
-def deduplicate_mutation_suggestions(suggestions: list[dict]) -> list[dict]:
-    seen = set()
-    unique = []
-    for s in suggestions:
-        key = s["mutation"]
-        if key not in seen:
-            seen.add(key)
-            unique.append(s)
-    return unique
-
-
-def rank_mutation_suggestions(suggestions: list[dict]) -> list[dict]:
-    category_priority = {
-        "patch_breaking": 0,
-        "oxidation_mitigation": 1,
-        "motif_breaking": 2,
-    }
-    suggestions = sorted(
-        suggestions,
-        key=lambda x: (category_priority.get(x["category"], 99), x["position"])
+    all_impacts = _dedupe_impacts(all_impacts)
+    all_impacts = sorted(
+        all_impacts,
+        key=lambda x: (-x["benefit_score"], x["disruption_risk"], x["position"]),
     )
-    for i, s in enumerate(suggestions, start=1):
-        s["rank"] = i
-    return suggestions
 
+    for i, x in enumerate(all_impacts, start=1):
+        x["rank"] = i
 
-def generate_mutation_suggestions(
-    seq: str,
-    risk_regions: list[dict],
-    liabilities: list[dict],
-    protected_positions: set[int],
-) -> list[dict]:
-    suggestions = []
-    suggestions.extend(suggest_patch_breaking_mutations(seq, risk_regions, protected_positions))
-    suggestions.extend(suggest_oxidation_mitigations(seq, liabilities, protected_positions))
-    suggestions.extend(suggest_motif_breaking_mutations(seq, liabilities, protected_positions))
-    suggestions = deduplicate_mutation_suggestions(suggestions)
-    suggestions = rank_mutation_suggestions(suggestions)
-    return suggestions[:TOP_N_SUGGESTIONS]
+    flat = all_impacts[:TOP_N_SUGGESTIONS]
+
+    decision_summary = build_decision_summary(region_analyses, all_impacts)
+
+    return all_impacts, flat, region_analyses, decision_summary

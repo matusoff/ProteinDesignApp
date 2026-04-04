@@ -1,0 +1,8 @@
+# Optional: headless PNG rendering (Structure-aware view)
+#
+#   conda install -c conda-forge pymol-open-source
+#
+# If the app still says "PyMOL not found":
+#   • Run from Anaconda Prompt: conda activate <env> && python app.py
+#   • Or set env: PYMOL_EXECUTABLE=C:\Users\you\miniconda3\Scripts\pymol.bat
+#   • Or edit config.py: PYMOL_FALLBACK_PATH = r"C:\...\Scripts\pymol.bat"

@@ -104,7 +104,11 @@ def _pdb_to_viewer_html(pdb_str: str) -> str:
     except ImportError:
         return ""
     try:
-        view = py3Dmol.view(js="https://3dmol.org/build/3Dmol.js", width=800, height=400)
+        view = py3Dmol.view(
+            js="https://cdn.jsdelivr.net/npm/3dmol@2.0.4/build/3Dmol-min.js",
+            width=800,
+            height=400,
+        )
         view.addModel(pdb_str, "pdb")
         view.setStyle({"model": -1}, {"cartoon": {"color": "spectrum"}})
         view.zoomTo()

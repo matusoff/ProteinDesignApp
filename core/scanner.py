@@ -83,7 +83,7 @@ def scan_low_complexity_regions(seq: str, window: int = 12) -> list[dict]:
     return regions
 
 
-def merge_overlapping_regions(regions: list[dict]) -> list[dict]:
+def merge_overlapping_regions(regions: list[dict], seq: str) -> list[dict]:
     if not regions:
         return []
     regions = sorted(regions, key=lambda x: (x["risk_type"], x["start"], x["end"]))
@@ -96,7 +96,8 @@ def merge_overlapping_regions(regions: list[dict]) -> list[dict]:
 
         if same_type and overlap:
             prev["end"] = max(prev["end"], region["end"])
-            prev["sequence"] = ""
+            # Keep the actual merged span sequence for exports/UX.
+            prev["sequence"] = seq[prev["start"] - 1 : prev["end"]]
             prev["score"] = max(prev["score"], region["score"])
             if region["severity"] == "high":
                 prev["severity"] = "high"
@@ -112,4 +113,4 @@ def identify_risk_regions(seq: str) -> list[dict]:
     regions.extend(scan_aromatic_clusters(seq))
     regions.extend(scan_charge_patches(seq))
     regions.extend(scan_low_complexity_regions(seq))
-    return merge_overlapping_regions(regions)
+    return merge_overlapping_regions(regions, seq)

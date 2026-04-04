@@ -8,3 +8,9 @@ __pycache__/
 .DS_Store
 *.pdb
 /tmp/
+
+# Local AF3 / structure dumps (keep README in data/structures/)
+data/structures/*.cif
+data/structures/*.mmcif
+.env
+.env.*

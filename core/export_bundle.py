@@ -47,5 +47,15 @@ def write_tables_zip(state: dict | None) -> tuple[str | None, str]:
             _df_to_zip_str(pd.DataFrame(mut)) if mut else "",
         )
         zf.writestr("scores.json", json.dumps(scores, indent=2))
+        zf.writestr("region_analyses.json", json.dumps(state.get("region_analyses") or [], indent=2))
+        zf.writestr("mutation_impacts.json", json.dumps(state.get("mutation_impacts") or [], indent=2, default=str))
+        zf.writestr("decision_summary.json", json.dumps(state.get("decision_summary") or {}, indent=2, default=str))
+        sc = state.get("structure_context") or {}
+        if sc:
+            sc_json = dict(sc)
+            zf.writestr("structure_context.json", json.dumps(sc_json, indent=2, default=str))
+            p = sc.get("pymol_png_full")
+            if p and Path(p).is_file():
+                zf.write(p, arcname="structure_preview.png")
 
     return str(zip_path), ""

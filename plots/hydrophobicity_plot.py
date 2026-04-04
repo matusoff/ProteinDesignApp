@@ -37,3 +37,43 @@ def make_hydrophobicity_plot(
                 ax.axvspan(r["start"], r["end"], alpha=0.2)
 
     return fig
+
+
+def make_hydrophobicity_comparison_plot(
+    wt_seq: str,
+    mut_seq: str,
+    wt_profile: list[float],
+    mut_profile: list[float],
+    changed_positions: list[int],
+    window: int = 9,
+):
+    """
+    Overlay WT vs Mutant hydrophobicity profiles and mark changed residues.
+    """
+
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+    if not wt_profile and not mut_profile:
+        ax.text(0.5, 0.5, "No profiles to plot (sequence too short)", ha="center", va="center")
+        ax.set_axis_off()
+        return fig
+
+    if wt_profile:
+        x_wt = list(range(1, len(wt_profile) + 1))
+        ax.plot(x_wt, wt_profile, label="WT")
+    if mut_profile:
+        x_mut = list(range(1, len(mut_profile) + 1))
+        ax.plot(x_mut, mut_profile, label="Mutant")
+
+    ax.set_xlabel("Window start position")
+    ax.set_ylabel("Mean hydrophobicity")
+    ax.set_title("WT vs Mutant hydrophobicity profile")
+    ax.legend(loc="best")
+
+    if changed_positions:
+        half = window // 2
+        for pos in changed_positions:
+            x = pos - half
+            if x > 0:
+                ax.axvline(x, alpha=0.2, linewidth=1.5, color="red")
+
+    return fig
