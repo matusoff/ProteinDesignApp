@@ -1,6 +1,19 @@
+---
+title: Protein Developability Review Assistant
+emoji: 🧬
+colorFrom: blue
+colorTo: indigo
+sdk: gradio
+sdk_version: 5.0.0
+app_file: app.py
+pinned: false
+license: mit
+short_description: Exploratory sequence developability review — risks, liabilities, mutation ideas (not experimentally validated).
+---
+
 # Protein Developability Review Assistant
 
-**Version 1.3.0** · Exploratory **sequence** developability review in one pass: liabilities, regional risk heuristics, mutation ideas, and optional **structure-aware** context when you upload matching coordinates.
+**Live demo:** [Hugging Face Space](https://huggingface.co/spaces/matusoff/protein-design-app) · **Version 1.3.0** · Exploratory **sequence** developability review in one pass: liabilities, regional risk heuristics, mutation ideas, and optional **structure-aware** context when you upload matching coordinates.
 
 > **Not validated for the lab.** This is a prototype for discussion, teaching, and iteration — see [DISCLAIMER.md](DISCLAIMER.md).
 
