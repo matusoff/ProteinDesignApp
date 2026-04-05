@@ -1,7 +1,5 @@
-# 5.0.x gradio_client crashes if Pydantic 2.11+ emits boolean JSON Schema nodes ("const" in schema on bool)
+# Avoid Gradio 5.0.x (stale gradio_client vs Pydantic 2.11+ JSON Schema). HF pins gradio[oauth,mcp]; do not cap pydantic — mcp extra needs pydantic>=2.11.
 gradio>=5.28.0,<6
-# Belt-and-suspenders on Spaces where resolver still pulls newer pydantic
-pydantic>=2.0,<2.11
 # HF Spaces may preinstall huggingface_hub 1.x; Gradio 5.x oauth still imports HfFolder (removed in hub 1.0)
 huggingface_hub>=0.25.0,<1.0
 biopython>=1.84
