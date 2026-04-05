@@ -1,4 +1,6 @@
 gradio>=5.0.0
+# HF Spaces may preinstall huggingface_hub 1.x; Gradio 5.x oauth still imports HfFolder (removed in hub 1.0)
+huggingface_hub>=0.25.0,<1.0
 biopython>=1.84
 pandas>=2.2.0
 matplotlib>=3.8.0
