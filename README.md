@@ -8,7 +8,7 @@ sdk_version: 5.0.0
 app_file: app.py
 pinned: false
 license: mit
-short_description: Exploratory sequence developability review — risks, liabilities, mutation ideas (not experimentally validated).
+short_description: Protein developability: risks, liabilities, mutations.
 ---
 
 # Protein Developability Review Assistant

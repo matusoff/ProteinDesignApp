@@ -14,7 +14,7 @@ sdk_version: 5.0.0
 app_file: app.py
 pinned: false
 license: mit
-short_description: Exploratory sequence developability review — risks, liabilities, mutation ideas (not experimentally validated).
+short_description: Protein developability: risks, liabilities, mutations.
 ---
 
 # Protein Developability Review Assistant
@@ -28,7 +28,7 @@ short_description: Exploratory sequence developability review — risks, liabili
 
 **Caution:** Exploratory tool only — **not** a substitute for experimental validation. See the in-app **About this prototype** and the repo `DISCLAIMER.md`.
 
-**Links:** Source code and full documentation live in the linked GitHub repository.
+**GitHub:** [matusoff/ProteinDesignApp](https://github.com/matusoff/ProteinDesignApp) — source, `README`, `DISCLAIMER.md`.
 ```
 
 After the first push, open **Space Settings → Repository** and point the Space at your GitHub repo (or duplicate from GitHub). Ensure `requirements.txt` and `app.py` are at the repository root.
