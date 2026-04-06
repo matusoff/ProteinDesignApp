@@ -24,7 +24,6 @@ from core.structure_prediction import predict_structure
 from plots.hydrophobicity_plot import (
     compute_hydrophobicity_profile,
     make_hydrophobicity_comparison_plot,
-    make_hydrophobicity_plot,
 )
 from plots.sequence_profiles import (
     compute_aromatic_profile,
@@ -138,12 +137,6 @@ def run_analysis(
         )
 
     profile = compute_hydrophobicity_profile(result["sequence"])
-    fig = make_hydrophobicity_plot(
-        result["sequence"],
-        profile,
-        result["risk_regions"],
-        set(result["protected_positions"]),
-    )
     charge_profile = compute_charge_profile(result["sequence"])
     aromatic_profile = compute_aromatic_profile(result["sequence"])
     low_complexity_profile = compute_low_complexity_profile(result["sequence"])
@@ -153,6 +146,7 @@ def run_analysis(
         charge_profile,
         aromatic_profile,
         low_complexity_profile,
+        risk_regions=result["risk_regions"],
     )
 
     session_state = session_state or {"history": []}
@@ -173,7 +167,6 @@ def run_analysis(
         region_df,
         impact_df,
         mut_df,
-        fig,
         tracks_fig,
         result.get("report_text", ""),
         seq_map,

@@ -308,10 +308,24 @@ def generate_text_report(result: dict) -> str:
 
     lines.append("")
     lines.append("Mutation impacts (ranked):")
+    lines.append(
+        "  [Scores are in-app heuristics only — not experimental developability.]"
+    )
+    lines.append(
+        "  benefit_score: composite upside from local metric deltas in the scanned window plus "
+        "liability motifs removed/added (higher = more favorable trade-off in this model)."
+    )
+    lines.append(
+        "  disruption_risk: integer-ish penalty for edits considered structurally aggressive here — "
+        "e.g. mutating G/P/C (+1.5), large |Δmean hydrophobicity| or |Δlocal net charge| (+1 each), "
+        "losing F/W/Y to non-aromatic (+0.5). 0.0 means none of those rules fired, not 'proven safe'."
+    )
+    lines.append("")
     for s in result.get("mutation_impacts") or []:
         lines.append(
-            f"  - {s.get('mutation')} [{s.get('option_type', '')}]: benefit {s.get('benefit_score')} "
-            f"disruption {s.get('disruption_risk')} — {s.get('rationale')}"
+            f"  - {s.get('mutation')} [{s.get('option_type', '')}]: "
+            f"benefit_score={s.get('benefit_score')} disruption_risk={s.get('disruption_risk')} — "
+            f"{s.get('rationale')}"
         )
 
     sc = result.get("structure_context") or {}

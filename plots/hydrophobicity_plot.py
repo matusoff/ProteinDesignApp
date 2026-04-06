@@ -27,9 +27,9 @@ def make_hydrophobicity_plot(
 
     x = list(range(1, len(profile) + 1))
     ax.plot(x, profile)
-    ax.set_xlabel("Window start position")
-    ax.set_ylabel("Mean hydrophobicity")
-    ax.set_title("Sliding-window hydrophobicity profile")
+    ax.set_xlabel("Window start position (1-based)")
+    ax.set_ylabel("Mean hydropathy (Kyte–Doolittle)\n9-residue window")
+    ax.set_title("Sliding-window hydropathy (Kyte–Doolittle scale)")
 
     if risk_regions:
         for r in risk_regions:
@@ -64,9 +64,9 @@ def make_hydrophobicity_comparison_plot(
         x_mut = list(range(1, len(mut_profile) + 1))
         ax.plot(x_mut, mut_profile, label="Mutant")
 
-    ax.set_xlabel("Window start position")
-    ax.set_ylabel("Mean hydrophobicity")
-    ax.set_title("WT vs Mutant hydrophobicity profile")
+    ax.set_xlabel("Window start position (1-based)")
+    ax.set_ylabel("Mean hydropathy (Kyte–Doolittle)\n9-residue window")
+    ax.set_title("WT vs Mutant — Kyte–Doolittle hydropathy")
     ax.legend(loc="best")
 
     if changed_positions:

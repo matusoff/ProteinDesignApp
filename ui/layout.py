@@ -137,6 +137,83 @@ def build_app_layout():
             background: linear-gradient(180deg, #fb7185 0%, #e11d48 100%) !important;
             border-bottom-color: #be123c !important;
         }
+
+        /*
+         * PyMOL PNG block: Gradio dark theme sets --block-background-fill on accordions.
+         * Override theme variables + paint the shell so the header is a light grey box with black text.
+         */
+        .pda-pymol-png-shell {
+            background: #e2e8f0 !important;
+            border: 1px solid #94a3b8 !important;
+            border-radius: 10px !important;
+            padding: 0 !important;
+            overflow: hidden;
+        }
+        .pda-pymol-png-shell > div {
+            background: #e2e8f0 !important;
+        }
+        /* Fallback if elem_id lands on an inner node: force header styling from shell */
+        .pda-pymol-png-shell button,
+        .pda-pymol-png-shell [role="button"] {
+            background-color: #e2e8f0 !important;
+            background: #e2e8f0 !important;
+            color: #0a0a0a !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        .pda-pymol-png-shell button:hover,
+        .pda-pymol-png-shell [role="button"]:hover {
+            background-color: #cbd5e1 !important;
+            color: #0a0a0a !important;
+        }
+        .pda-pymol-png-shell span,
+        .pda-pymol-png-shell label,
+        .pda-pymol-png-shell p {
+            color: #0a0a0a !important;
+        }
+        .pda-pymol-png-shell svg {
+            color: #0a0a0a !important;
+            fill: #0a0a0a !important;
+            stroke: #0a0a0a !important;
+        }
+        #pda_pymol_png_accordion.pda-pymol-png-accordion,
+        div#pda_pymol_png_accordion {
+            --block-background-fill: #e2e8f0 !important;
+            --background-fill-primary: #e2e8f0 !important;
+            --background-fill-secondary: #e2e8f0 !important;
+            --button-secondary-background-fill: #e2e8f0 !important;
+            --button-secondary-background-fill-hover: #cbd5e1 !important;
+            --body-text-color: #0a0a0a !important;
+            --block-label-text-color: #0a0a0a !important;
+            --color-accent-soft: #0a0a0a !important;
+            background-color: #e2e8f0 !important;
+            color: #0a0a0a !important;
+            border: none !important;
+            border-radius: 0 !important;
+        }
+        #pda_pymol_png_accordion button,
+        #pda_pymol_png_accordion [role="button"] {
+            background-color: #e2e8f0 !important;
+            background: #e2e8f0 !important;
+            color: #0a0a0a !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        #pda_pymol_png_accordion button:hover,
+        #pda_pymol_png_accordion [role="button"]:hover {
+            background-color: #cbd5e1 !important;
+            color: #0a0a0a !important;
+        }
+        #pda_pymol_png_accordion span,
+        #pda_pymol_png_accordion label,
+        #pda_pymol_png_accordion p {
+            color: #0a0a0a !important;
+        }
+        #pda_pymol_png_accordion svg {
+            color: #0a0a0a !important;
+            fill: #0a0a0a !important;
+            stroke: #0a0a0a !important;
+        }
         """,
     ) as demo:
         gr.Markdown(f"# {APP_TITLE}")
@@ -147,7 +224,7 @@ def build_app_layout():
             f"Expand <strong>About this prototype</strong> for capabilities and limits.</p>"
         )
 
-        with gr.Accordion("About this prototype (read first)", open=True):
+        with gr.Accordion("About this prototype (read first)", open=False):
             gr.Markdown(
                 """
 ### What this app does (today)
@@ -256,58 +333,72 @@ Use **Load demo** to try packaged examples, or paste your own FASTA / raw sequen
                     value="**Insights** will appear after the first run.",
                 )
 
-                gr.Markdown("### Hydrophobicity (sliding window)")
-                hydro_plot = gr.Plot(label="KD mean · window")
-                gr.Markdown("### Sequence biophysics tracks")
-                sequence_tracks_plot = gr.Plot(label="Hydrophobicity / charge / aromaticity / low-complexity")
+                gr.Markdown(
+                    "### Sequence biophysics tracks\n\n"
+                    "<p style='margin:0 0 8px 0;color:#94a3b8;font-size:14px;'>"
+                    "Top panel: <strong>Kyte–Doolittle</strong> mean hydropathy (9-residue window); "
+                    "shaded bands = sequence scanner <strong>hydrophobic clusters</strong>. "
+                    "Lower panels: charge, aromatic fraction, low-complexity.</p>"
+                )
+                sequence_tracks_plot = gr.Plot(
+                    label="Kyte–Doolittle · charge · aromatic · low-complexity (9-aa windows)"
+                )
 
-                with gr.Column(elem_classes=["structure-view-panel"]):
-                    gr.HTML(
-                        value=(
-                            "<h3 style='margin:0 0 10px 0;font-size:1.15rem;font-weight:700;color:#0a0a0a;'>"
-                            "Structure-aware view (optional upload)</h3>"
-                            "<p style='margin:0;line-height:1.55;font-size:14px;color:#0a0a0a;'>"
-                            "With <strong>PyMOL</strong> on the server, the app renders a <strong>PNG</strong> "
-                            "(cartoon + hotspot sticks + exposed-liability spheres). "
-                            "Use the <strong>PyMOL / ChimeraX</strong> box below to reproduce the same view locally."
-                            "</p>"
+                with gr.Accordion("Structure-aware view (optional upload)", open=True):
+                    with gr.Column(elem_classes=["structure-view-panel"]):
+                        gr.HTML(
+                            value=(
+                                "<p style='margin:0 0 12px 0;line-height:1.55;font-size:14px;color:#0a0a0a;'>"
+                                "<strong>Interactive 3D backbone</strong> (below) works in the browser when you attach "
+                                "<code style=\"background:#f1f5f9;padding:1px 4px;border-radius:3px;border:1px solid #e2e8f0;\">.pdb</code> / "
+                                "<code style=\"background:#f1f5f9;padding:1px 4px;border-radius:3px;border:1px solid #e2e8f0;\">.cif</code> "
+                                "and run review. "
+                                "<strong>PyMOL PNG</strong> only appears if PyMOL is installed on the server (uncommon on public Spaces) — "
+                                "expand the nested section if you need it.</p>"
+                            )
                         )
-                    )
-                    structure_image = gr.Image(
-                        label="Structure (PyMOL render)",
-                        type="filepath",
-                        interactive=False,
-                        height=420,
-                    )
-                    structure_panel = gr.HTML(
-                        value="<p style='color:#0a0a0a;'>Attach coordinates in the input column, then run review.</p>",
-                    )
-                    structure_3d_view = gr.HTML(
-                        value="<p style='color:#0a0a0a;'>3D backbone view appears after structure-assisted review.</p>"
-                    )
+                        structure_3d_view = gr.HTML(
+                            value="<p style='color:#0a0a0a;'>3D backbone view appears after structure-assisted review.</p>"
+                        )
+                        structure_panel = gr.HTML(
+                            value="<p style='color:#0a0a0a;'>Attach coordinates in the input column, then run review.</p>",
+                        )
+                        with gr.Column(elem_classes=["pda-pymol-png-shell"]):
+                            with gr.Accordion(
+                                "PyMOL PNG render (server only)",
+                                open=False,
+                                elem_id="pda_pymol_png_accordion",
+                                elem_classes=["pda-pymol-png-accordion"],
+                            ):
+                                structure_image = gr.Image(
+                                    label="Structure (PyMOL render)",
+                                    type="filepath",
+                                    interactive=False,
+                                    height=420,
+                                )
 
-                with gr.Accordion("Physicochemical snapshot", open=False):
+                with gr.Accordion("Physicochemical snapshot", open=True):
                     global_df = gr.Dataframe(
                         label="Metrics",
                         wrap=True,
                         elem_classes=["pda-table-wrap", "pda-df-global"],
                     )
 
-                with gr.Accordion("Raw scanner spans", open=False):
+                with gr.Accordion("Raw scanner spans", open=True):
                     risk_df = gr.Dataframe(
                         label="Hits",
                         wrap=True,
                         elem_classes=["pda-table-wrap", "pda-df-risk"],
                     )
 
-                with gr.Accordion("Chemical liabilities", open=False):
+                with gr.Accordion("Chemical liabilities", open=True):
                     liabilities_df = gr.Dataframe(
                         label="Sites",
                         wrap=True,
                         elem_classes=["pda-table-wrap", "pda-df-liab"],
                     )
 
-                with gr.Accordion("Region diagnostics", open=False):
+                with gr.Accordion("Region diagnostics", open=True):
                     region_analysis_df = gr.Dataframe(
                         label="Evidence",
                         wrap=True,
@@ -346,10 +437,16 @@ Use **Load demo** to try packaged examples, or paste your own FASTA / raw sequen
 
                 gr.Markdown("#### Export")
                 with gr.Row():
-                    export_zip_btn = gr.Button("Tables + JSON (ZIP)")
-                    export_txt_btn = gr.Button("Report (TXT)")
-                export_zip_file = gr.File(label="ZIP")
-                export_txt_file = gr.File(label="TXT")
+                    export_zip_dl = gr.DownloadButton(
+                        "Tables + JSON (ZIP)",
+                        value=None,
+                        variant="secondary",
+                    )
+                    export_txt_dl = gr.DownloadButton(
+                        "Report (TXT)",
+                        value=None,
+                        variant="secondary",
+                    )
 
                 with gr.Accordion("Structure (optional · local ESMFold)", open=False):
                     gr.Markdown(
@@ -381,7 +478,6 @@ Use **Load demo** to try packaged examples, or paste your own FASTA / raw sequen
                         region_analysis_df,
                         mutation_impact_df,
                         mutations_df,
-                        hydro_plot,
                         sequence_tracks_plot,
                         report_output,
                         sequence_map_code,
@@ -399,16 +495,16 @@ Use **Load demo** to try packaged examples, or paste your own FASTA / raw sequen
                     outputs=[sequence_input, structure_file],
                 )
 
-                export_zip_btn.click(
+                export_zip_dl.click(
                     fn=export_tables_zip_callback,
                     inputs=[analysis_state],
-                    outputs=[export_zip_file],
+                    outputs=[export_zip_dl],
                 )
 
-                export_txt_btn.click(
+                export_txt_dl.click(
                     fn=export_report_txt_callback,
                     inputs=[analysis_state],
-                    outputs=[export_txt_file],
+                    outputs=[export_txt_dl],
                 )
 
                 predict_structure_btn.click(

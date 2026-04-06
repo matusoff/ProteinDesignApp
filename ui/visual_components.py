@@ -44,6 +44,21 @@ def _tone_from_label(label: str) -> str:
     return "neutral"
 
 
+def _mutation_label_text(x: Any) -> str | None:
+    if x is None:
+        return None
+    s = str(x).strip()
+    return s if s else None
+
+
+def _sort_by_disruption_then_benefit(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(rows, key=lambda r: (r.get("disruption_risk", 99), -float(r.get("benefit_score", -99.0) or 0.0)))
+
+
+def _sort_by_benefit_then_disruption(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(rows, key=lambda r: (-float(r.get("benefit_score", -99.0) or 0.0), r.get("disruption_risk", 99)))
+
+
 def build_executive_summary_html(result: dict[str, Any]) -> str:
     name = html.escape(result.get("sequence_name") or "Construct")
     ln = len(result.get("sequence") or "")
@@ -79,39 +94,66 @@ def build_executive_summary_html(result: dict[str, Any]) -> str:
             f"</div>"
         )
 
-    opts = ""
-    safer = ds.get("safer_option")
-    stronger = ds.get("stronger_option")
+    # CONSERVATIVE / STRONGER: heuristic “less disruptive” vs “more benefit” picks from
+    # patch-breaking suggestions (see core/decision_engine.py). Not physics — exploratory only.
+    safer = _mutation_label_text(ds.get("safer_option"))
+    stronger = _mutation_label_text(ds.get("stronger_option"))
 
-    # Fallback when no explicit safer/stronger pair was produced.
-    # This happens for some region types (e.g. charge-only hits) where
-    # patch-breaking candidate generation is sparse.
+    # Fallback when decision_engine could not pair options (e.g. dominant region is not
+    # hydrophobic_cluster so patch-breaking list is empty there). Use full impact list, then table shortlist.
     if not safer or not stronger:
         impacts = result.get("mutation_impacts") or []
         if impacts:
-            by_disruption = sorted(impacts, key=lambda x: (x.get("disruption_risk", 99), -x.get("benefit_score", -99)))
-            by_benefit = sorted(impacts, key=lambda x: (-x.get("benefit_score", -99), x.get("disruption_risk", 99)))
-            safer = safer or by_disruption[0].get("mutation")
-            stronger = stronger or by_benefit[0].get("mutation")
-            if safer == stronger and len(by_benefit) > 1:
-                stronger = by_benefit[1].get("mutation")
+            by_d = _sort_by_disruption_then_benefit(impacts)
+            by_b = _sort_by_benefit_then_disruption(impacts)
+            safer = safer or _mutation_label_text(by_d[0].get("mutation"))
+            stronger = stronger or _mutation_label_text(by_b[0].get("mutation"))
+            if safer == stronger and len(by_b) > 1:
+                stronger = _mutation_label_text(by_b[1].get("mutation"))
+    if not safer or not stronger:
+        sugg = result.get("mutation_suggestions") or []
+        if sugg:
+            by_d = _sort_by_disruption_then_benefit(sugg)
+            by_b = _sort_by_benefit_then_disruption(sugg)
+            safer = safer or _mutation_label_text(by_d[0].get("mutation"))
+            stronger = stronger or _mutation_label_text(by_b[0].get("mutation"))
+            if safer == stronger and len(by_b) > 1:
+                stronger = _mutation_label_text(by_b[1].get("mutation"))
+
+    opts = ""
+    mut_span = (
+        'style="display:inline-block;margin-top:6px;font-family:ui-monospace,Consolas,monospace;'
+        'font-size:15px;font-weight:600;color:#0f172a;line-height:1.4;"'
+    )
     if safer or stronger:
+        s_disp = html.escape(safer) if safer else "(none)"
+        t_disp = html.escape(stronger) if stronger else "(none)"
         opts = (
             f"<div style='margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;'>"
             f"<div style='flex:1;min-width:200px;padding:10px 12px;border-radius:8px;background:#f1f8e9;border:1px solid #c5e1a5;'>"
             f"<span style='font-size:11px;color:#558b2f;font-weight:600;'>CONSERVATIVE</span><br/>"
-            f"<code style='font-size:14px;'>{html.escape(str(safer or '—'))}</code></div>"
+            f"<span {mut_span}>{s_disp}</span></div>"
             f"<div style='flex:1;min-width:200px;padding:10px 12px;border-radius:8px;background:#fff3e0;border:1px solid #ffcc80;'>"
             f"<span style='font-size:11px;color:#e65100;font-weight:600;'>STRONGER</span><br/>"
-            f"<code style='font-size:14px;'>{html.escape(str(stronger or '—'))}</code></div>"
+            f"<span {mut_span}>{t_disp}</span></div>"
             f"</div>"
+            f"<p style='margin:8px 0 0 0;font-size:12px;color:#94a3b8;line-height:1.45;'>"
+            "<strong>Conservative</strong> = lowest modeled disruption risk among ranked suggestions; "
+            "<strong>Stronger</strong> = highest modeled benefit score (local metrics / liabilities). "
+            "Heuristic only — confirm in structure and assays.</p>"
+        )
+    elif dom:
+        opts = (
+            "<p style='margin:12px 0 0 0;font-size:13px;color:#94a3b8;line-height:1.45;'>"
+            "No mutation pair to highlight for this run (no ranked suggestions). "
+            "See <strong>Mutation impacts</strong> / <strong>Top suggestions</strong> tables below if present.</p>"
         )
 
     return (
         f"<div style='font-family:system-ui,-apple-system,sans-serif;'>"
         f"<div style='display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;'>"
-        f"<div style='font-size:20px;font-weight:700;color:#1a237e;'>{name}</div>"
-        f"<div style='font-size:13px;color:#757575;'>{ln} aa · schema v{html.escape(str(result.get('version','')))}</div>"
+        f"<div style='font-size:20px;font-weight:700;color:#f8fafc;'>{name}</div>"
+        f"<div style='font-size:13px;color:#94a3b8;'>{ln} aa · schema v{html.escape(str(result.get('version','')))}</div>"
         f"</div>"
         f"<div style='display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;'>{badges}</div>"
         f"{hotspot}"
@@ -243,7 +285,8 @@ def build_structure_section_html(structure_context: dict[str, Any] | None) -> st
             "(2) Under <em>Optional structure</em>, attach your <code style=\"background:#f1f5f9;padding:1px 4px;border-radius:3px;border:1px solid #e2e8f0;\">.pdb</code> / <code style=\"background:#f1f5f9;padding:1px 4px;border-radius:3px;border:1px solid #e2e8f0;\">.cif</code> file and set "
             "<strong>Chain ID</strong> if needed (blank = first chain). "
             "(3) Click <strong>Run review</strong>.</p>"
-            "<p style='margin:0;'>With PyMOL available on the server, a rendered PNG appears above; otherwise use the snippet below locally.</p>"
+            "<p style='margin:0;'>The <strong>interactive 3D viewer</strong> above works in the browser. "
+            "Optional <strong>PyMOL PNG</strong> and the script box below are for local use if PyMOL is not on the server.</p>"
             "</div>"
         )
     if not structure_context.get("ok"):
@@ -278,7 +321,8 @@ def build_structure_section_html(structure_context: dict[str, Any] | None) -> st
     if has_png:
         status = (
             "<p style='margin:0 0 8px 0;font-size:13px;color:#0a0a0a;'>"
-            "PyMOL PNG rendered (cartoon + hotspot sticks; blue spheres for exposed liabilities).</p>"
+            "PyMOL PNG available — expand <strong>PyMOL PNG render (server only)</strong> above to view it. "
+            "(Same coloring as the interactive viewer: cartoon + hotspot sticks + exposed-liability spheres.)</p>"
         )
     elif render_err:
         status = (
@@ -288,12 +332,13 @@ def build_structure_section_html(structure_context: dict[str, Any] | None) -> st
     else:
         status = (
             "<p style='margin:0 0 8px 0;font-size:13px;color:#0a0a0a;'>"
-            "No PNG this run — use the PyMOL snippet below with your coordinates file.</p>"
+            "No PyMOL PNG this run — use the <strong>interactive 3D viewer</strong> above, or the script below in PyMOL/ChimeraX locally.</p>"
         )
 
     legend = (
         "<p style='margin:0;font-size:13px;color:#0a0a0a;line-height:1.45;'>"
-        "<strong>Image:</strong> grey cartoon; colored sticks = hydrophobic patches; blue spheres = exposed liabilities.</p>"
+        "<strong>PyMOL PNG (when present):</strong> grey cartoon; colored sticks = hydrophobic patches; "
+        "blue spheres = exposed liabilities (same idea as the 3D view).</p>"
     )
 
     pymol = (structure_context.get("pymol_snippet") or "").strip()
@@ -302,9 +347,9 @@ def build_structure_section_html(structure_context: dict[str, Any] | None) -> st
         esc = html.escape(pymol)
         pymol_html = (
             "<details style='margin-top:12px;color-scheme:light;background:#e2e8f0;border-radius:8px;padding:10px 12px;"
-            "border:1px solid #94a3b8;' open>"
-            "<summary style='cursor:pointer;font-weight:600;color:#0a0a0a;'>PyMOL / ChimeraX (copy)</summary>"
-            "<p style='font-size:13px;color:#0a0a0a;margin:8px 0;'>Paste after loading your coordinates file.</p>"
+            "border:1px solid #94a3b8;'>"
+            "<summary style='cursor:pointer;font-weight:600;color:#0a0a0a;'>PyMOL / ChimeraX script</summary>"
+            "<p style='font-size:13px;color:#0a0a0a;margin:8px 0;'>Copy into PyMOL or ChimeraX after loading your coordinates file.</p>"
             f"<pre style='white-space:pre-wrap;word-break:break-all;color:#0a0a0a !important;background:#f8fafc !important;"
             f"border:1px solid #64748b;border-radius:6px;padding:10px;font-size:12px;line-height:1.45;margin:0;"
             f"font-family:ui-monospace,Consolas,monospace;'>{esc}</pre>"

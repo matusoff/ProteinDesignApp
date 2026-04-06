@@ -53,6 +53,7 @@ def make_sequence_tracks_plot(
     charge_profile: list[float],
     aromatic_profile: list[float],
     low_complexity_profile: list[float],
+    risk_regions: list[dict] | None = None,
 ):
     fig, axes = plt.subplots(4, 1, figsize=(11, 8), sharex=True)
 
@@ -65,8 +66,12 @@ def make_sequence_tracks_plot(
     x = list(range(1, len(hydrophobicity_profile) + 1))
 
     axes[0].plot(x, hydrophobicity_profile, color="#1d4ed8", linewidth=1.8)
-    axes[0].set_ylabel("KD mean")
-    axes[0].set_title("Sequence biophysics tracks")
+    if risk_regions:
+        for r in risk_regions:
+            if r.get("risk_type") == "hydrophobic_cluster":
+                axes[0].axvspan(int(r["start"]), int(r["end"]), alpha=0.2, color="#93c5fd")
+    axes[0].set_ylabel("Mean hydropathy\n(Kyte–Doolittle)")
+    axes[0].set_title("Sliding-window hydropathy (Kyte–Doolittle scale)")
     axes[0].grid(alpha=0.2, linestyle="--")
 
     axes[1].plot(x, charge_profile, color="#9333ea", linewidth=1.6)
@@ -123,7 +128,7 @@ def make_profile_delta_plot(
     delta_lc = [mut_low_complexity[i] - wt_low_complexity[i] for i in range(n)]
 
     data = [
-        (delta_h, "Δ KD mean", "#1d4ed8"),
+        (delta_h, "Δ Kyte–Doolittle\nmean", "#1d4ed8"),
         (delta_c, "Δ net charge", "#9333ea"),
         (delta_a, "Δ aromatic frac", "#ea580c"),
         (delta_lc, "Δ low-complex", "#0891b2"),
