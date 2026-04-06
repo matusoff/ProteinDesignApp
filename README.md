@@ -44,20 +44,9 @@ Built with **Gradio** (UI), **Biopython**, **pandas**, **NumPy**, **matplotlib**
 
 ---
 
-## Try it live (recommended for evaluators)
+## Try it live
 
 **Step-by-step:** [**docs/DEPLOY_HUGGINGFACE.md**](docs/DEPLOY_HUGGINGFACE.md) (GitHub → HF Space → share URL).
-
-Short path:
-
-1. Push this repo to **GitHub** (clean tree, no secrets).
-2. **Hugging Face** → **New Space** → SDK **Gradio** → import from that repo.
-3. Paste the Space `README` from [`docs/HF_SPACE_README_SNIPPET.md`](docs/HF_SPACE_README_SNIPPET.md).
-4. Share `https://huggingface.co/spaces/<you>/<space-name>` plus your GitHub link.
-
-**Public demo hygiene:** Free CPU Spaces usually **do not** have PyMOL — structure PNGs may be missing; sequence review + exports still work.
-
-**Sanity check before you push:** `pip install -r requirements.txt` then `python -c "import app; print(app.demo)"` should print a Gradio Blocks object without error.
 
 ---
 
