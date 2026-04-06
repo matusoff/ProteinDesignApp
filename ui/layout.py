@@ -258,6 +258,8 @@ Use **Load demo** to try packaged examples, or paste your own FASTA / raw sequen
 
                 gr.Markdown("### Hydrophobicity (sliding window)")
                 hydro_plot = gr.Plot(label="KD mean · window")
+                gr.Markdown("### Sequence biophysics tracks")
+                sequence_tracks_plot = gr.Plot(label="Hydrophobicity / charge / aromaticity / low-complexity")
 
                 with gr.Column(elem_classes=["structure-view-panel"]):
                     gr.HTML(
@@ -279,6 +281,9 @@ Use **Load demo** to try packaged examples, or paste your own FASTA / raw sequen
                     )
                     structure_panel = gr.HTML(
                         value="<p style='color:#0a0a0a;'>Attach coordinates in the input column, then run review.</p>",
+                    )
+                    structure_3d_view = gr.HTML(
+                        value="<p style='color:#0a0a0a;'>3D backbone view appears after structure-assisted review.</p>"
                     )
 
                 with gr.Accordion("Physicochemical snapshot", open=False):
@@ -377,12 +382,14 @@ Use **Load demo** to try packaged examples, or paste your own FASTA / raw sequen
                         mutation_impact_df,
                         mutations_df,
                         hydro_plot,
+                        sequence_tracks_plot,
                         report_output,
                         sequence_map_code,
                         analysis_state,
                         session_state,
                         structure_image,
                         structure_panel,
+                        structure_3d_view,
                     ],
                 )
 
@@ -496,6 +503,7 @@ Use **Load demo** to try packaged examples, or paste your own FASTA / raw sequen
 
                 gr.Markdown("#### Profiles")
                 hydro_compare_plot = gr.Plot(label="Hydrophobicity overlay")
+                profile_delta_plot = gr.Plot(label="Mutant - WT profile deltas")
 
                 compare_btn.click(
                     fn=run_compare,
@@ -518,6 +526,7 @@ Use **Load demo** to try packaged examples, or paste your own FASTA / raw sequen
                         gained_df,
                         lost_df,
                         hydro_compare_plot,
+                        profile_delta_plot,
                         compare_state,
                         session_state,
                     ],

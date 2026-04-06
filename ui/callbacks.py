@@ -19,11 +19,19 @@ from core.report import (
     generate_text_report,
 )
 from core.structure_analysis import analyze_structure_context
+from core.structure_viewer import build_interactive_structure_html
 from core.structure_prediction import predict_structure
 from plots.hydrophobicity_plot import (
     compute_hydrophobicity_profile,
     make_hydrophobicity_comparison_plot,
     make_hydrophobicity_plot,
+)
+from plots.sequence_profiles import (
+    compute_aromatic_profile,
+    compute_charge_profile,
+    compute_low_complexity_profile,
+    make_profile_delta_plot,
+    make_sequence_tracks_plot,
 )
 from config import REVIEW_GOAL_DEFAULT
 from data.example_sequences import DEMO_FASTAS, demo_structure_path
@@ -77,6 +85,7 @@ def run_analysis(
             session_state,
             None,
             "<div></div>",
+            "<div></div>",
         )
 
     spath = _uploaded_file_path(structure_file)
@@ -116,9 +125,17 @@ def run_analysis(
     sc = result.get("structure_context") or {}
     structure_panel_html = build_structure_section_html(result.get("structure_context"))
     img_path: str | None = None
+    structure_3d_html = "<div></div>"
     if sc.get("ok") and sc.get("pymol_png_full"):
         p = str(sc["pymol_png_full"])
         img_path = p if Path(p).is_file() else None
+    if sc.get("ok") and spath:
+        structure_3d_html = build_interactive_structure_html(
+            spath,
+            str(sc.get("chain_id") or ""),
+            sc.get("structural_hotspots") or [],
+            sc.get("liabilities_mapped") or [],
+        )
 
     profile = compute_hydrophobicity_profile(result["sequence"])
     fig = make_hydrophobicity_plot(
@@ -126,6 +143,16 @@ def run_analysis(
         profile,
         result["risk_regions"],
         set(result["protected_positions"]),
+    )
+    charge_profile = compute_charge_profile(result["sequence"])
+    aromatic_profile = compute_aromatic_profile(result["sequence"])
+    low_complexity_profile = compute_low_complexity_profile(result["sequence"])
+    tracks_fig = make_sequence_tracks_plot(
+        result["sequence"],
+        profile,
+        charge_profile,
+        aromatic_profile,
+        low_complexity_profile,
     )
 
     session_state = session_state or {"history": []}
@@ -147,12 +174,14 @@ def run_analysis(
         impact_df,
         mut_df,
         fig,
+        tracks_fig,
         result.get("report_text", ""),
         seq_map,
         analysis_state,
         session_state,
         img_path,
         structure_panel_html,
+        structure_3d_html,
     )
 
 
@@ -172,7 +201,7 @@ def run_compare(
         protected_text=protected_text,
     )
     if wt_error:
-        return wt_error, None, None, None, None, None, None, None, None, None, session_state
+        return wt_error, None, None, None, None, None, None, None, None, None, None, session_state
 
     mut_result, mut_error = analyze_sequence(
         sequence_text=mutant_text,
@@ -181,7 +210,7 @@ def run_compare(
         protected_text=protected_text,
     )
     if mut_error:
-        return mut_error, None, None, None, None, None, None, None, None, None, session_state
+        return mut_error, None, None, None, None, None, None, None, None, None, None, session_state
 
     comp = compare_results(wt_result, mut_result)
 
@@ -242,6 +271,22 @@ def run_compare(
     mut_profile = compute_hydrophobicity_profile(mut_seq)
     changed_positions = [int(c["position"]) for c in changed if c.get("category") == "substitution"]
     fig = make_hydrophobicity_comparison_plot(wt_seq, mut_seq, wt_profile, mut_profile, changed_positions)
+    wt_charge = compute_charge_profile(wt_seq)
+    mut_charge = compute_charge_profile(mut_seq)
+    wt_aromatic = compute_aromatic_profile(wt_seq)
+    mut_aromatic = compute_aromatic_profile(mut_seq)
+    wt_low_complexity = compute_low_complexity_profile(wt_seq)
+    mut_low_complexity = compute_low_complexity_profile(mut_seq)
+    delta_fig = make_profile_delta_plot(
+        wt_profile,
+        mut_profile,
+        wt_charge,
+        mut_charge,
+        wt_aromatic,
+        mut_aromatic,
+        wt_low_complexity,
+        mut_low_complexity,
+    )
 
     compare_md = comp.get("compare_markdown", "")
     style = sequence_map_style or "blocks_20"
@@ -278,6 +323,7 @@ def run_compare(
         gained_df,
         lost_df,
         fig,
+        delta_fig,
         compare_state,
         session_state,
     )
