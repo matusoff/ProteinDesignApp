@@ -110,4 +110,4 @@ plots/                 # Hydrophobicity figures
 
 ## License
 
-MIT — see [LICENSE](LICENSE). If you omit or change the license, update this section.
+MIT — see [LICENSE](LICENSE).
