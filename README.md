@@ -111,9 +111,3 @@ plots/                 # Hydrophobicity figures
 ## License
 
 MIT — see [LICENSE](LICENSE). If you omit or change the license, update this section.
-
----
-
-## Contact / citation
-
-Add your name, lab, or preferred citation here when you publish the demo.
