@@ -313,6 +313,31 @@ def build_structure_section_html(structure_context: dict[str, Any] | None) -> st
         f"</div>"
     )
 
+    lps = structure_context.get("liability_patch_stats") or {}
+    patch_html = ""
+    if lps.get("ok"):
+        esc_disc = html.escape(str(lps.get("disclaimer", "")))
+        esc_interp = html.escape(str(lps.get("interpretation", "")))
+        ec = lps.get("exposure_counts") or {}
+        exp_line = html.escape(
+            f"At liability sites — exposed: {ec.get('exposed', 0)}, intermediate: {ec.get('intermediate', 0)}, "
+            f"buried: {ec.get('buried', 0)} (from 10 Å neighbor tertiles on this chain)."
+        )
+        patch_html = (
+            "<div style='margin:10px 0;padding:10px 12px;border-radius:10px;border:1px solid #94a3b8;"
+            "background:#e2e8f0;color:#0a0a0a;font-size:13px;line-height:1.5;'>"
+            "<strong>Liability patch (Cα geometry)</strong>"
+            "<p style='margin:6px 0 4px 0;font-size:12px;color:#334155;'>" + esc_disc + "</p>"
+            "<p style='margin:0 0 6px 0;'>" + esc_interp + "</p>"
+            "<p style='margin:0;font-size:12px;color:#1e293b;'>" + exp_line + "</p>"
+            "</div>"
+        )
+    elif lps.get("interpretation"):
+        patch_html = (
+            "<div style='margin:10px 0;padding:8px 10px;border-radius:8px;background:#f1f5f9;"
+            "color:#0a0a0a;font-size:13px;'>" + html.escape(str(lps.get("interpretation", ""))) + "</div>"
+        )
+
     png_path = structure_context.get("pymol_png_full") or ""
     has_png = bool(png_path)
     render_err = structure_context.get("pymol_render_error")
@@ -358,5 +383,5 @@ def build_structure_section_html(structure_context: dict[str, Any] | None) -> st
 
     return (
         f"<div style='font-family:system-ui,sans-serif;color:#0a0a0a;background:transparent;'>"
-        f"{head}{status}{legend}{pymol_html}</div>"
+        f"{head}{patch_html}{status}{legend}{pymol_html}</div>"
     )

@@ -100,3 +100,4 @@ plots/                 # Hydrophobicity figures
 ## License
 
 MIT — see [LICENSE](LICENSE).
+

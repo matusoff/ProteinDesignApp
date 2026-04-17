@@ -2,7 +2,7 @@ import os
 
 APP_TITLE = "Protein Developability Review Assistant"
 APP_VERSION = "1.3.0"
-RESULT_SCHEMA_VERSION = "0.3.2"
+RESULT_SCHEMA_VERSION = "0.3.3"
 APP_SUBTITLE = "Sequence developability review — risks, liabilities, and mutation options in one pass."
 
 # Single review mode for now (goal-specific tuning can branch on this later).

@@ -44,6 +44,9 @@ def build_liabilities_table_from_result(result: dict[str, Any]) -> pd.DataFrame:
                     "Severity": x.get("severity"),
                     "Comment": x.get("comment"),
                     "Exposure (3D)": x.get("structure_exposure"),
+                    "Neighbors @10Å": x.get("neighbor_count_10A"),
+                    "d(Cα COM) Å": x.get("dist_to_ca_centroid_A"),
+                    "Shell %": x.get("radial_shell_percentile"),
                     "Adj. severity": x.get("severity_structure_adjusted"),
                     "Structure note": x.get("structure_note", ""),
                 }
@@ -348,5 +351,25 @@ def generate_text_report(result: dict) -> str:
                 lines.append("  PyMOL PNG: available (session temp file; not embedded in this report).")
             if sc.get("pymol_render_error"):
                 lines.append(f"  PyMOL render note: {sc.get('pymol_render_error')}")
+            lps = sc.get("liability_patch_stats") or {}
+            if lps.get("ok"):
+                lines.append("")
+                lines.append("  Liability patch stats (Cα heuristics, not SASA):")
+                lines.append(f"    {lps.get('disclaimer', '')}")
+                lines.append(f"    {lps.get('interpretation', '')}")
+                if lps.get("chain_mean_neighbors_10A") is not None:
+                    li_nb = lps.get("liability_mean_neighbors_10A")
+                    li_nb_s = f"{li_nb:.2f}" if isinstance(li_nb, (int, float)) else "n/a"
+                    lines.append(
+                        f"    Chain mean neighbors @10 Å: {lps['chain_mean_neighbors_10A']:.2f}; "
+                        f"at liabilities: {li_nb_s}"
+                    )
+                if lps.get("chain_mean_radial_shell_pct") is not None:
+                    li_r = lps.get("liability_mean_radial_shell_pct")
+                    li_r_s = f"{li_r:.1f}" if isinstance(li_r, (int, float)) else "n/a"
+                    lines.append(
+                        f"    Chain mean radial shell %: {lps['chain_mean_radial_shell_pct']:.1f}; "
+                        f"at liabilities: {li_r_s}"
+                    )
 
     return "\n".join(lines)

@@ -45,6 +45,38 @@ def enrich_residue_table_with_coords(
     return out
 
 
+def compute_radial_shell_proxies(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Distance from each Cα/centroid to the chain's Cα centroid, plus a radial rank (0–100).
+
+    Higher radial_shell_percentile → farther from the geometric center → often more
+    peripheral for a single-domain globule (weak proxy; fails for extended/multidomain shapes).
+    """
+    if not rows:
+        return []
+    coords = np.array([r["centroid"] for r in rows], dtype=np.float64)
+    com = np.mean(coords, axis=0)
+    dists = np.linalg.norm(coords - com, axis=1)
+    n = len(dists)
+    out: list[dict[str, Any]] = []
+    if n <= 1:
+        for i, row in enumerate(rows):
+            r = dict(row)
+            r["dist_to_ca_centroid_A"] = float(dists[i]) if n else 0.0
+            r["radial_shell_percentile"] = 50.0
+            out.append(r)
+        return out
+    pct = np.zeros(n, dtype=np.float64)
+    for i in range(n):
+        pct[i] = 100.0 * float(np.sum(dists < dists[i])) / float(n - 1)
+    for i, row in enumerate(rows):
+        r = dict(row)
+        r["dist_to_ca_centroid_A"] = float(dists[i])
+        r["radial_shell_percentile"] = float(pct[i])
+        out.append(r)
+    return out
+
+
 def compute_residue_exposure(rows: list[dict[str, Any]], radius: float = 10.0) -> list[dict[str, Any]]:
     """
     Neighbor count within `radius` Å of each Cα/centroid (excluding self).

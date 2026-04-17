@@ -9,9 +9,11 @@ from typing import Any
 
 from core.structure_features import (
     apply_exposure_classification,
+    compute_radial_shell_proxies,
     compute_residue_exposure,
     enrich_residue_table_with_coords,
 )
+from core.structure_patch_stats import compute_liability_patch_stats
 from core.structure_hotspots import find_exposed_mwn, identify_structural_hotspots
 from core.structure_integration import (
     adjust_mutations_for_structure,
@@ -74,6 +76,7 @@ def analyze_structure_context(
 
     table = enrich_residue_table_with_coords(residues, table)
     table = compute_residue_exposure(table)
+    table = compute_radial_shell_proxies(table)
     table = apply_exposure_classification(table)
 
     hotspots = identify_structural_hotspots(table)
@@ -81,6 +84,7 @@ def analyze_structure_context(
 
     mapped = map_liabilities_to_structure(liabilities, table)
     mapped_refined = refine_liability_severity_by_exposure(mapped)
+    liability_patch_stats = compute_liability_patch_stats(table, mapped_refined)
 
     integration = integrate_sequence_and_structure(
         risk_regions,
@@ -116,4 +120,5 @@ def analyze_structure_context(
         "pymol_render_error": pml_err,
         "pymol_snippet": pymol_snippet,
         "warnings": seq_warnings,
+        "liability_patch_stats": liability_patch_stats,
     }

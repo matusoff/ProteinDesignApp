@@ -21,9 +21,13 @@ def map_liabilities_to_structure(
             m["structure_exposure"] = row.get("exposure_class", "unknown")
             m["pdb_resseq"] = row.get("pdb_resseq")
             m["neighbor_count_10A"] = row.get("neighbor_count_10A")
+            m["dist_to_ca_centroid_A"] = row.get("dist_to_ca_centroid_A")
+            m["radial_shell_percentile"] = row.get("radial_shell_percentile")
         else:
             m["structure_exposure"] = "unmapped"
             m["pdb_resseq"] = None
+            m["dist_to_ca_centroid_A"] = None
+            m["radial_shell_percentile"] = None
         out.append(m)
     return out
 
